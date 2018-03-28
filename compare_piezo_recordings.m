@@ -1,10 +1,9 @@
+function [piezo_power_ratio,r] = compare_piezo_recordings(piezo_call_struct)
 spec_win_params_s = [1e-3 1.75e-3];
 audio_fs = 250e3;
 piezo_fs = 50e3;
-spec_win_params_audio = round(spec_win_params_s*audio_fs);
 spec_win_params_piezo = round(spec_win_params_s*piezo_fs);
-nfft_audio = 2^12;
-nfft_piezo = 2^10;
+
 nLogger = 2;
 call_offset = 0.1;
 max_lag = 10e-3;
@@ -14,10 +13,7 @@ call_offset_piezo = call_offset*piezo_fs;
 freq_bands = [0 4; 6 10] * 1e3;
 [b_lp,a_lp] = butter(4,2e3/(piezo_fs/2),'low');
 downsample_factor = audio_fs/piezo_fs;
-smooth_span = spec_win_params_piezo(1)*10;
 r = zeros(length(piezo_call_struct),nLogger);
-d = zeros(length(piezo_call_struct),nLogger);
-sample_diffs = zeros(length(piezo_call_struct),nLogger);
 call_rms = zeros(1,length(piezo_call_struct));
 call_length = zeros(1,length(piezo_call_struct));
 piezo_power_ratio = zeros(length(piezo_call_struct),nLogger);
@@ -26,7 +22,7 @@ for call_k = 1:length(piezo_call_struct)
     audio_data = piezo_call_struct(call_k).wav_call_data(call_offset_audio:end-call_offset_audio);
     call_rms(call_k) = rms(audio_data);
     call_length(call_k) = length(audio_data)/audio_fs;
-    audio_data_ds = downsample(audio_data,5);
+    audio_data_ds = downsample(audio_data,downsample_factor);
     audio_data_envelope = zscore(envelope(audio_data_ds,spec_win_params_piezo(1),'rms'));
     
    
@@ -42,4 +38,6 @@ for call_k = 1:length(piezo_call_struct)
         
     end
     
+end
+
 end
