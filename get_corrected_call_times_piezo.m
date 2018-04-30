@@ -43,7 +43,7 @@ for call_f = 1:n_cut_call_files
         cut_call_data(call_f).(cut_call_fields{f}) = s.(cut_call_fields{f});
     end
     f_name_split = strsplit(cut_call_files(call_f).name,{'_','.'});
-    cut_call_data(call_f).fName = [audioDir strjoin(f_name_split(1:2),'_') '.WAV'];
+    cut_call_data(call_f).fName = fullfile(audioDir, [strjoin(f_name_split(1:2),'_') '.WAV']);
     cut_call_data(call_f).f_num = str2double(f_name_split{2}) - start_f_num + 1;
     cut_call_data(call_f).expDay = expDay;
     % calculate time in whole recordings, corrected from AVI/NLG clock
