@@ -2,6 +2,9 @@ function process_piezo_audio_video_data
 audio_fs = 250e3;
 piezo_fs = 50e3;
 inter_ttl_duration = 4e3;
+cd ..
+addpath(genpath('neurobat-callCutting'))
+addpath(genpath('neurobat-piezo-mic'))
 %base_dir = 'C:\Users\phyllo\Documents\Maimon\misc\piezo_testing\audioLogger_testing\03212018\';
 base_dir = '/Volumes/JulieBatsDrive/04272018/';
 logger_dirs = dir(fullfile(base_dir, 'audio_logger_format', 'logger*'));
@@ -30,7 +33,7 @@ end
 
 [shared_piezo_pulse_times, shared_audio_pulse_times, total_samples_by_file, first_piezo_pulse_time, first_audio_pulse_time] = align_avi_to_piezo(base_dir,inter_ttl_duration,logger_num_to_align_to,wav_file_nums,session_strings);
 save([audio_dir 'audio2piezo_fit'],'shared_piezo_pulse_times', 'shared_audio_pulse_times', 'first_piezo_pulse_time', 'first_audio_pulse_time','total_samples_by_file');
-findcalls_v5_mcr(audio_dir,250e3,'wav');
+findcalls(audio_dir,250e3,'wav');
 manual_classify_calls(audio_dir,'Call');
 
 cut_call_data = get_corrected_call_times_piezo(audio_dir,[audio_dir 'Analyzed_auto\'],'Call');

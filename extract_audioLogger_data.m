@@ -74,53 +74,107 @@ for Nlg_folder_i=1:length(Nlg_folders) % for each of the Nlg folders
     % file are, in order, "Event Number", "Time Stamp", "Time (ms from
     % midnight)", "Time Source", "Event Type", and "Details" (7/20/2016)
     Nlg_event_file_xlsx_name=fullfile(Nlg_folder,'EVENTLOG.xlsx'); % file path of the Nlg event file in .xlsx format
-    [~,~,imported_Nlg_event_xlsx]=xlsread(Nlg_event_file_xlsx_name); % importing the entire excel sheet as a cell array, importing numbers as numbers, words as strings, and empty cells as NaNs
-    string_or_number=zeros(size(imported_Nlg_event_xlsx,1),1);
-    for row_i=1:size(imported_Nlg_event_xlsx,1) % looping over the rows of the spreadsheet (which is in general faster than using "cellfun"), to find out whether the entry in the first column is string or number
-        if ischar(imported_Nlg_event_xlsx{row_i,1})
-            string_or_number(row_i)=1;
-        elseif isnumeric(imported_Nlg_event_xlsx{row_i,1}) && ~isnan(imported_Nlg_event_xlsx{row_i,1})
-            string_or_number(row_i)=2;
+    if exist('Nlg_event_file_xlsx_name', 'file')
+        [~,~,imported_Nlg_event_xlsx]=xlsread(Nlg_event_file_xlsx_name); % importing the entire excel sheet as a cell array, importing numbers as numbers, words as strings, and empty cells as NaNs
+        string_or_number=zeros(size(imported_Nlg_event_xlsx,1),1);
+        for row_i=1:size(imported_Nlg_event_xlsx,1) % looping over the rows of the spreadsheet (which is in general faster than using "cellfun"), to find out whether the entry in the first column is string or number
+            if ischar(imported_Nlg_event_xlsx{row_i,1})
+                string_or_number(row_i)=1;
+            elseif isnumeric(imported_Nlg_event_xlsx{row_i,1}) && ~isnan(imported_Nlg_event_xlsx{row_i,1})
+                string_or_number(row_i)=2;
+            else
+                disp(['Row ' num2str(row_i) ', column 1 in excel sheet is neither number nor string.'])
+            end
+            if isnan(imported_Nlg_event_xlsx{row_i,6}) % when "Details" for a row is empty, MATLAB imports it as Nan
+                imported_Nlg_event_xlsx{row_i,6}=''; % change the NaN to an empty string
+            end
+        end
+        first_numeric_row=find(string_or_number==2,1); % the first few rows of the spreadsheet contain the header and the labels for the columns, and the next rows contain the events, which have numbers in the first column; this line finds the first of those rows with numbers
+        continued_event_indices=find(string_or_number==1);
+        continued_event_indices=continued_event_indices(continued_event_indices>first_numeric_row); % find the rows that are "...Continued" from the previous rows, which have the string "-----" in the first column
+        for continued_i=continued_event_indices % for each of the "...Continued" events, add its "Details" to that of the event from which it contnues
+            continued_from_i=find(string_or_number(1:continued_i)==2,1,'last'); % the last row before the current "...Continued" row that has a number, ie. the event from which the current "...Continued" row continues
+            imported_Nlg_event_xlsx{continued_from_i,6}=[imported_Nlg_event_xlsx{continued_from_i,6} imported_Nlg_event_xlsx{continued_i,6}];
+        end
+        imported_Nlg_event_xlsx(continued_event_indices,:)=[]; % delete all the "...Continued" rows, since their "Details" have already been copied
+        if isempty(sampling_period_sec) % if the sampling period wasn't manually entered above, read it from the header
+            Nlg_header_rows=1:first_numeric_row-2; % the row before the first numeric row is the column labels (eg. 'Time Stamp', 'Event Type', etc.), and the rows before that are the header
+            Nlg_header=[imported_Nlg_event_xlsx{Nlg_header_rows,1}];
+            string_before='ADC Period = ';
+            string_after='us';
+            string_start_index=strfind(Nlg_header,string_before)+length(string_before);
+            string_end_index=strfind(Nlg_header,string_after)-1;
+            sampling_period_sec=str2double(Nlg_header(string_start_index:string_end_index))/1e6;
+        end
+        if isempty(AD_count_to_uV_factor) % if the conversion factor from AD counts to voltages wasn't manually entered above, read it from the header
+            Nlg_header_rows=1:first_numeric_row-2; % the row before the first numeric row is the column labels (eg. 'Time Stamp', 'Event Type', etc.), and the rows before that are the header
+            Nlg_header=[imported_Nlg_event_xlsx{Nlg_header_rows,1}];
+            string_before='ADC Resolution = ';
+            string_after='uV';
+            string_start_index=strfind(Nlg_header,string_before)+length(string_before);
+            string_end_index=strfind(Nlg_header,string_after)-1;
+            AD_count_to_uV_factor=str2double(Nlg_header(string_start_index:string_end_index));
+        end
+        
+        event_timestamps_usec=cell2mat(imported_Nlg_event_xlsx(first_numeric_row:end,3))*1000; % time stamps, converted from ms to us
+        event_timestamps_source=imported_Nlg_event_xlsx(first_numeric_row:end,4); % source of time stamps: logger or transceiver
+        event_types=imported_Nlg_event_xlsx(first_numeric_row:end,5);
+        event_types_and_details=strcat(imported_Nlg_event_xlsx(first_numeric_row:end,5),{'. '},imported_Nlg_event_xlsx(first_numeric_row:end,6)); % event type and details are concatenated together, with a period and space between them, eg. "File started" and "File index: 001" and concatenated into "File started. File index: 001"
+    else
+        Nlg_event_file_csv_name=fullfile(Nlg_folder,'EVENTLOG.csv'); % file path of the Nlg event file in .csv format
+        FID = fopen(Nlg_event_file_csv_name);
+        Exp_info = textscan(FID, '%s',3,'Delimiter','\r'); % The three first lines are settings of the experiments
+        Header = textscan(FID, '%s %s %s %s %s %s',1, 'Delimiter', ',');
+        Data = textscan(FID, '%s %s %f %s %s %s', 'Delimiter', ',');
+        fclose(FID);
+        % Collapse details of lines that are continuation of each other
+        Continued_event_logic = strcmp(Data{:,1}, '-----');
+        Continued_event_indices = find(Continued_event_logic) ;
+        for continued_i=1:sum(Continued_event_logic)% for each of the "...Continued" events, add its "Details" to that of the event from which it contnues
+            continued_from_i=find(~Continued_event_logic(1:Continued_event_indices(continued_i)),1,'last'); % the last row before the current "...Continued" row that was not -----, ie. the event from which the current "...Continued" row continues
+            Data{6}{continued_from_i}=[Data{6}{continued_from_i} Data{6}{Continued_event_indices(continued_i)}];
+        end
+        for cc=1:6
+            Data{cc}(Continued_event_indices)=[]; % delete all the "...Continued" rows, since their "Details" have already been copied
+        end
+        if isempty(sampling_period_sec) % if the sampling period wasn't manually entered above, read it from the header
+            string_before='ADC Period = ';
+            string_after='us';
+            string_start_index=strfind(Exp_info{2},string_before)+length(string_before);
+            string_end_index=strfind(Exp_info{2},string_after)-1;
+            sampling_period_sec=str2double(Exp_info{2}(string_start_index:string_end_index))/1e6;
+        end
+        if isempty(AD_count_to_uV_factor) % if the conversion factor from AD counts to voltages wasn't manually entered above, read it from the header
+            string_before='ADC Resolution = ';
+            string_after='uV';
+            string_start_index=strfind(Exp_info{3},string_before)+length(string_before);
+            string_end_index=strfind(Exp_info{3},string_after)-1;
+            AD_count_to_uV_factor=str2double(Exp_info{3}(string_start_index:string_end_index));
+        end
+        % Identify Time stamps column
+        if 3 ~= find(strcmp(Header, 'Time (ms from midnight)'))
+            error(' The third column does not correspond to the time from midnight\n')
         else
-            disp(['Row ' num2str(row_i) ', column 1 in excel sheet is neither number nor string.'])
+            event_timestamps_usec=Data{3}*1000; % time stamps, converted from ms to us
         end
-        if isnan(imported_Nlg_event_xlsx{row_i,6}) % when "Details" for a row is empty, MATLAB imports it as Nan
-            imported_Nlg_event_xlsx{row_i,6}=''; % change the NaN to an empty string
+        if 4~= find(strcmp(Header, 'Time Source'))
+            error(' The fourth column does not correspond to the time source\n')
+        else
+            event_timestamps_source=Data{4}; % source of time stamps: logger or transceiver
+        end
+        if 5~= find(strcmp(Header, 'Event Type'))
+            error(' The fifth column does not correspond to the event type\n')
+        else
+            event_types=Data{5};
+        end
+        if 6~= find(strcmp(Header, 'Details'))
+            error(' The sixth column does not correspond to the details\n')
+        else
+            event_types_and_details=strcat(Data{5},{'. '},Data{6}); % event type and details are concatenated together, with a period and space between them, eg. "File started" and "File index: 001" and concatenated into "File started. File index: 001"
         end
     end
-    first_numeric_row=find(string_or_number==2,1); % the first few rows of the spreadsheet contain the header and the labels for the columns, and the next rows contain the events, which have numbers in the first column; this line finds the first of those rows with numbers
     
-    continued_event_indices=find(string_or_number==1);
-    continued_event_indices=continued_event_indices(continued_event_indices>first_numeric_row); % find the rows that are "...Continued" from the previous rows, which have the string "-----" in the first column
-    for continued_i=continued_event_indices % for each of the "...Continued" events, add its "Details" to that of the event from which it contnues
-        continued_from_i=find(string_or_number(1:continued_i)==2,1,'last'); % the last row before the current "...Continued" row that has a number, ie. the event from which the current "...Continued" row continues
-        imported_Nlg_event_xlsx{continued_from_i,6}=[imported_Nlg_event_xlsx{continued_from_i,6} imported_Nlg_event_xlsx{continued_i,6}];
-    end
-    imported_Nlg_event_xlsx(continued_event_indices,:)=[]; % delete all the "...Continued" rows, since their "Details" have already been copied
     
-    if isempty(sampling_period_sec) % if the sampling period wasn't manually entered above, read it from the header
-        Nlg_header_rows=1:first_numeric_row-2; % the row before the first numeric row is the column labels (eg. 'Time Stamp', 'Event Type', etc.), and the rows before that are the header
-        Nlg_header=[imported_Nlg_event_xlsx{Nlg_header_rows,1}];
-        string_before='ADC Period = ';
-        string_after='us';
-        string_start_index=strfind(Nlg_header,string_before)+length(string_before);
-        string_end_index=strfind(Nlg_header,string_after)-1;
-        sampling_period_sec=str2double(Nlg_header(string_start_index:string_end_index))/1e6;
-    end
-    if isempty(AD_count_to_uV_factor) % if the conversion factor from AD counts to voltages wasn't manually entered above, read it from the header
-        Nlg_header_rows=1:first_numeric_row-2; % the row before the first numeric row is the column labels (eg. 'Time Stamp', 'Event Type', etc.), and the rows before that are the header
-        Nlg_header=[imported_Nlg_event_xlsx{Nlg_header_rows,1}];
-        string_before='ADC Resolution = ';
-        string_after='uV';
-        string_start_index=strfind(Nlg_header,string_before)+length(string_before);
-        string_end_index=strfind(Nlg_header,string_after)-1;
-        AD_count_to_uV_factor=str2double(Nlg_header(string_start_index:string_end_index));
-    end
-    
-    event_timestamps_usec=cell2mat(imported_Nlg_event_xlsx(first_numeric_row:end,3))*1000; % time stamps, converted from ms to us
-    event_timestamps_source=imported_Nlg_event_xlsx(first_numeric_row:end,4); % source of time stamps: logger or transceiver
-    event_types=imported_Nlg_event_xlsx(first_numeric_row:end,5);
-    event_types_and_details=strcat(imported_Nlg_event_xlsx(first_numeric_row:end,5),{'. '},imported_Nlg_event_xlsx(first_numeric_row:end,6)); % event type and details are concatenated together, with a period and space between them, eg. "File started" and "File index: 001" and concatenated into "File started. File index: 001"
     %%
     % Change all transceiver time stamps to the corresponding times of the
     % logger clock (the transceiver clock and logger clock run at different
