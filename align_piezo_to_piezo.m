@@ -49,7 +49,7 @@ piezo_pulse_times = cell(1,length(logger_nums));
 
 for n = 1:length(logger_nums)
     
-    eventfile = [base_dir 'piezo_data\logger' num2str(logger_nums(n)) filesep 'EVENTS.mat']; % load file with TTL status info
+    eventfile = [base_dir 'piezo_data' filesep 'logger' num2str(logger_nums(n)) filesep 'EVENTS.mat']; % load file with TTL status info
     load(eventfile);
     
     session_start_and_end = zeros(1,2);
@@ -101,6 +101,6 @@ ylabel('Difference between piezo 1 clock and piezo 2 clock');
 legend('real clock difference');
 
 if save_options_parameters_CD_figure
-    saveas(gcf,[base_dir 'piezo_data\logger' num2str(logger_nums(end)) filesep 'CD_correction_video_piezo.fig'])
+    saveas(gcf,[base_dir 'piezo_data' filesep 'logger' num2str(logger_nums(end)) filesep 'CD_correction_video_piezo.fig'])
 end
 end

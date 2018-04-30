@@ -1,16 +1,16 @@
 function cut_call_data = get_corrected_call_times_piezo(audioDir,analyzed_audio_dir,call_str)
 
-audio2piezo = load([audioDir 'audio2piezo_fit.mat']); % load correction between avisoft and NLG time data
+audio2piezo = load(fullfile(audioDir, 'audio2piezo_fit.mat')); % load correction between avisoft and NLG time data
 
 
-wav_files = dir([audioDir '*.wav']); % load raw audio recordings
+wav_files = dir(fullfile(audioDir, '*.wav')); % load raw audio recordings
 % sort wav files according to numbering
 wav_files_name = {wav_files.name};
 wav_file_nums = cellfun(@(x) str2double(regexp(x,'(?<=_)\d+(?=.WAV)','match','ignorecase')), wav_files_name); 
 [~, sort_wav_files_idx] = sort(wav_file_nums);
 
 % load cut call files
-cut_call_files = dir([analyzed_audio_dir 'T*' call_str '*.mat']);
+cut_call_files = dir(fullfile(analyzed_audio_dir, ['T*' call_str '*.mat']));
 n_cut_call_files = length(cut_call_files);
 
 % get experiment date as datetime
@@ -35,7 +35,7 @@ end
 fs_wav = 250e3 + 21; % add in minor sampling rate correction
 
 for call_f = 1:n_cut_call_files
-    s = load([analyzed_audio_dir cut_call_files(call_f).name]);
+    s = load(fullfile(analyzed_audio_dir, cut_call_files(call_f).name));
     % transfer all data from cut call file to the data structure we're
     % building here
     cut_call_fields = fieldnames(s); 

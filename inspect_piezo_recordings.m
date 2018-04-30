@@ -1,6 +1,6 @@
 function piezo_call_struct = inspect_piezo_recordings(base_dir)
 
-logger_dirs = dir([base_dir 'piezo_data\logger*']);
+logger_dirs = dir([base_dir 'piezo_data' filesep 'logger*']);
 nLogger = length(logger_dirs);
 logger_sampling_period_usec = 20;
 piezo_fs = 1/(1e-6*logger_sampling_period_usec);
@@ -8,9 +8,9 @@ audio_fs = 250e3;
 logger_num_to_align_to = 3;
 logger_idx_to_align_to = find(arrayfun(@(x) ~isempty(strfind(x.name,num2str(logger_num_to_align_to))),logger_dirs));
 logger_idx_to_align = setdiff(1:nLogger,logger_idx_to_align_to);
-audio_dir = [base_dir 'audio\ch1\'];
+audio_dir = fullfile(base_dir, 'audio', 'ch1');
 
-s = load([audio_dir 'cut_call_data.mat']);
+s = load(fullfile(audio_dir, 'cut_call_data.mat'));
 cut_call_data = s.cut_call_data;
 cut_call_data = cut_call_data(~[cut_call_data.noise]);
 

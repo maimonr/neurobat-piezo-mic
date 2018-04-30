@@ -34,12 +34,12 @@ end
 
 
 [shared_piezo_pulse_times, shared_audio_pulse_times, total_samples_by_file, first_piezo_pulse_time, first_audio_pulse_time] = align_avi_to_piezo(base_dir,inter_ttl_duration,logger_num_to_align_to,wav_file_nums,session_strings);
-save([audio_dir 'audio2piezo_fit'],'shared_piezo_pulse_times', 'shared_audio_pulse_times', 'first_piezo_pulse_time', 'first_audio_pulse_time','total_samples_by_file');
+save(fullfile(audio_dir, 'audio2piezo_fit'),'shared_piezo_pulse_times', 'shared_audio_pulse_times', 'first_piezo_pulse_time', 'first_audio_pulse_time','total_samples_by_file');
 findcalls(audio_dir,250e3,'wav');
 manual_classify_calls(audio_dir,'Call');
 
-cut_call_data = get_corrected_call_times_piezo(audio_dir,[audio_dir 'Analyzed_auto\'],'Call');
-save([audio_dir 'cut_call_data.mat'],'cut_call_data');
+cut_call_data = get_corrected_call_times_piezo(audio_dir,fullfile(audio_dir, 'Analyzed_auto'),'Call');
+save(fullfile(audio_dir, 'cut_call_data.mat'),'cut_call_data');
 
 for v = 1:2
     [shared_piezo_pulse_times, shared_video_pulse_times, first_piezo_pulse_time, first_video_pulse_time] = align_video_to_piezo(base_dir,v,inter_ttl_duration,logger_num_to_align_to,session_strings);
