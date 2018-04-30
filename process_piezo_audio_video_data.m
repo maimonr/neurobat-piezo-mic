@@ -2,23 +2,24 @@ function process_piezo_audio_video_data
 audio_fs = 250e3;
 piezo_fs = 50e3;
 inter_ttl_duration = 4e3;
-base_dir = 'C:\Users\phyllo\Documents\Maimon\misc\piezo_testing\audioLogger_testing\03212018\';
-logger_dirs = dir([base_dir 'audio_logger_format\logger*']);
+%base_dir = 'C:\Users\phyllo\Documents\Maimon\misc\piezo_testing\audioLogger_testing\03212018\';
+base_dir = '/Volumes/JulieBatsDrive/04272018/';
+logger_dirs = dir(fullfile(base_dir, 'audio_logger_format', 'logger*'));
 nLogger = length(logger_dirs);
 input_dir = cell(1,nLogger);
 output_dir = cell(1,nLogger);
 logger_num_to_align_to = 3;
-logger_nums = [3 4];
+logger_nums = [3 6];
 
 for logger_k = 1:nLogger
     input_dir{logger_k} = [logger_dirs(logger_k).folder filesep logger_dirs(logger_k).name filesep];
-    output_dir{logger_k} = [base_dir 'piezo_data\' logger_dirs(logger_k).name filesep];
+    output_dir{logger_k} = [base_dir 'piezo_data' filesep logger_dirs(logger_k).name filesep];
 end
-audio_dir = [base_dir 'audio\ch1\'];
-video_dirs = {[base_dir 'video\Camera 1\'], [base_dir 'video\Camera 2\']};
+audio_dir = fullfile(base_dir, 'audio','ch1');
+video_dirs = {[base_dir 'video' filesep 'Camera 1' filesep], [base_dir 'video' filesep 'Camera 2' filesep]};
 
 session_strings = {'start_communication','end_communication'};
-wav_files_struct = dir([base_dir 'audio\ch1\*.WAV']);
+wav_files_struct = dir(fullfile(base_dir, 'audio', 'ch1','*.WAV'));
 wav_file_names = {wav_files_struct(:).name};
 wav_file_nums = cellfun(@(x) str2double(x(end-10:end-4)),wav_file_names);
 

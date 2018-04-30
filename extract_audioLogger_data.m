@@ -35,7 +35,7 @@ Nlg_file_name_letters='NEUR'; % the first four letters of the Nlg .DAT file name
 num_channels=1; % total number of recording channels, including inactive ones
 AD_count_for_zero_voltage=0; % the AD count that represents zero volt, which will be subtracted from the recorded AD counts during the processing here
 AD_count_to_uV_factor=3.3; % voltage in microvolt = (raw AD count - AD_count_for_zero_voltage) * AD_count_to_uV_factor; this code does not convert the AD counts to voltages--this conversion factor is saved along with the AD counts in the same .mat files, to be used by detect_spikes_from_raw_voltage_trace.m; alternatively, leave as [] to read this from the Nlg event file header
-sampling_period_sec=20; % specify here the exact sampling period in s for the signal in a given recording channel, or leave it as [] to read the sampling period from the Nlg event file header; this is the number of channels times the sampling period of the AD converter
+sampling_period_sec=20/1e6; % specify here the exact sampling period in s for the signal in a given recording channel, or leave it as [] to read the sampling period from the Nlg event file header; this is the number of channels times the sampling period of the AD converter
 % For the Neurolog-16 that we use as of this writing (7/4/2016),
 % 512/15 = 34.13333... us is exactly 16 times the sampling period of the AD
 % converter. The sampling period from the header (34.133328 us) is slightly
@@ -65,7 +65,7 @@ for Nlg_folder_i=1:length(Nlg_folders) % for each of the Nlg folders
     reference_channel=reference_channel_for_each_Nlg_folder{Nlg_folder_i};
     disp(['Processing the Nlg data in "' Nlg_folder '"...'])
     if save_event_file || save_voltage_AD_count_files || save_options_parameters_CD_figure % if we're saving anything
-        if ~exist(output_folder,'dir'); % make the output folder if it doesn't already exist
+        if ~exist(output_folder,'dir') % make the output folder if it doesn't already exist
             mkdir(output_folder);
         end
     end
@@ -126,6 +126,11 @@ for Nlg_folder_i=1:length(Nlg_folders) % for each of the Nlg folders
     % logger clock (the transceiver clock and logger clock run at different
     % speeds); the clock difference is defined as logger time minus transceiver
     % time
+    
+    % Extracting the clock differences and the time they were reported in the log event file
+    % at each synchronization event and periodic system checks, 
+    % according to logger time (logger_times) and transceiver time
+    % (transceiver_times)
     string_before_CD='CD=';
     pre_CD_positions=strfind(event_types_and_details,string_before_CD);
     PC_comments_indices=find(~cellfun(@isempty,pre_CD_positions)); % find all the "PC-generated comment" events
@@ -145,6 +150,8 @@ for Nlg_folder_i=1:length(Nlg_folders) % for each of the Nlg folders
 %     clock_differences_usec(clock_differences_usec>0)= clock_differences_usec(clock_differences_usec>0) - (60*60*24)*1e6;
     transceiver_times=logger_times-clock_differences_usec; % the times of the transceiver clock when the clock differences were reported
     
+    % Identify all events reported with the transceiver clock as a reference
+    % and change the time to refer to the logger clock. 
     indices_bordering_unsynchronized_intervals=[1; find(ismember(event_types_and_details,'Clocks synchronized. ')); length(event_types_and_details)]; % the events when the two clocks are synchronzied, and the first and last event
     indices_events_with_transceiver_time=find(ismember(event_timestamps_source,'Transceiver (Fine)')); % find the events that were originally logged with transceiver time stamps
     estimated_clock_differences=nan(length(indices_events_with_transceiver_time),1);
@@ -154,9 +161,13 @@ for Nlg_folder_i=1:length(Nlg_folders) % for each of the Nlg folders
         if ~any(logical_indices_transc_t_in_interval) % if there is no events in the current interval whose clock difference need to be estimated
             continue
         end
-        logical_indices_PC_comments_in_interval=PC_comments_indices>indices_bordering_unsynchronized_intervals(unsynchronized_interval_i) & PC_comments_indices<indices_bordering_unsynchronized_intervals(unsynchronized_interval_i+1); % all the events in the current interval when clock difference was reported
-        transceiver_times_in_interval=transceiver_times(logical_indices_PC_comments_in_interval);
-        clock_differences_usec_in_interval= clock_differences_usec(logical_indices_PC_comments_in_interval);
+ %%       % Here we're taking all reports of time differences including the
+        % first one where in fact TD=0 because clocks were just syncced,
+        % the TD at this first time point is useful for previous time
+        % stamps but not for following time stamps.
+        logical_indices_PC_comments_in_interval=PC_comments_indices>indices_bordering_unsynchronized_intervals(unsynchronized_interval_i) & PC_comments_indices<indices_bordering_unsynchronized_intervals(unsynchronized_interval_i+1); % all the clock difference report events in the current interval (periodic system checks requested under advanced control in Deuteron)
+        transceiver_times_in_interval=transceiver_times(logical_indices_PC_comments_in_interval);% Value of the transceiver clock at the report of time difference between clocks
+        clock_differences_usec_in_interval= clock_differences_usec(logical_indices_PC_comments_in_interval);% Value of the time difference at the report of time difference between clocks
         if length(clock_differences_usec_in_interval)==1 % if there is only one reported clock difference in the current interval, then use that for all unreported clock differences
             estimated_clock_differences(logical_indices_transc_t_in_interval)=clock_differences_usec_in_interval;
         else
@@ -186,7 +197,7 @@ for Nlg_folder_i=1:length(Nlg_folders) % for each of the Nlg folders
     
     figure % plot the result of clock difference correction to check for mistakes
     hold on
-    plot((logger_times-event_timestamps_usec(1))/(1e6*60),clock_differences_usec/1e3,'ro') % logger times vs. the reported clock differences that were used for estimation
+    plot((logger_times-event_timestamps_usec(1))/(1e6*60),clock_differences_usec/1e3,'ro') % logger times in min vs. the reported clock differences in ms that were used for estimation
     plot((event_timestamps_usec(indices_events_with_transceiver_time)-event_timestamps_usec(1))/(1e6*60),estimated_clock_differences/1e3,'b.') % logger times vs. the estimated clock differences for all the time stamps that were originally transceiver times
     plot((event_timestamps_usec(indices_bordering_unsynchronized_intervals(2:end-1))-event_timestamps_usec(1))/(1e6*60),zeros(length(indices_bordering_unsynchronized_intervals(2:end-1)),1),'k*') % the events when the two clocks are synchronized
     legend('Recorded clock differences','Estimated clock differences','Clock synchronization events')
@@ -342,6 +353,7 @@ for Nlg_folder_i=1:length(Nlg_folders) % for each of the Nlg folders
             current_file_start_timestamps_usec=file_start_timestamps_usec(Nlg_file_i)+(0:ADC_sampling_period_usec:(num_channels-1)*ADC_sampling_period_usec); % time stamps of first sample of each of the channels; Jacob Vecht confirmed that the first sample of a file occurs at the file start time, unlike what was implied in the Neurologger manual (version 03-Apr-15 16:10:00)
             current_file_start_timestamps_usec=current_file_start_timestamps_usec(active_channels); % only the time stamps for the active channels
             timestamps_of_first_samples_usec(:,Nlg_file_i)=current_file_start_timestamps_usec;
+            
             if save_in_mat_or_Nlx_format==1 % if saving in MATLAB format
                 AD_count_all_channels_all_files_int16(:,(Nlg_file_i-1)*samples_per_channel_per_file+1:Nlg_file_i*samples_per_channel_per_file)=int16(AD_count_data); % the data from the current .DAT file, converted to signed 16-bit integers
             elseif save_in_mat_or_Nlx_format==2 % if saving in Nlx format
