@@ -5,6 +5,8 @@ inter_ttl_duration = 4e3;
 cd ..
 addpath(genpath('neurobat-callCutting'))
 addpath(genpath('neurobat-piezo-mic'))
+addpath(genpath('neurobat-hardware-alignment'))
+cd neurobat-piezo-mic
 %base_dir = 'C:\Users\phyllo\Documents\Maimon\misc\piezo_testing\audioLogger_testing\03212018\';
 base_dir = '/Volumes/JulieBatsDrive/04272018/';
 logger_dirs = dir(fullfile(base_dir, 'audio_logger_format', 'logger*'));
