@@ -14,15 +14,15 @@ s = load(fullfile(audio_dir, 'cut_call_data.mat'));
 cut_call_data = s.cut_call_data;
 cut_call_data = cut_call_data(~[cut_call_data.noise]);
 
-piezo2piezo = load([logger_dirs(logger_idx_to_align).folder filesep logger_dirs(logger_idx_to_align).name filesep 'piezo2piezo_fit.mat']);
-audio2piezo = load([audio_dir 'audio2piezo_fit.mat']);
+piezo2piezo = load(fullfile(logger_dirs(logger_idx_to_align).folder, logger_dirs(logger_idx_to_align).name, 'piezo2piezo_fit.mat'));
+audio2piezo = load(fullfile(audio_dir, 'audio2piezo_fit.mat'));
 
 timestamps = cell(1,nLogger);
 piezo_mean_values = zeros(1,nLogger);
 piezo_data = cell(1,nLogger);
 
 for logger_k = 1:nLogger
-    tsData = load([logger_dirs(logger_k).folder filesep logger_dirs(logger_k).name filesep 'CSC0.mat']);
+    tsData = load(fullfile(logger_dirs(logger_k).folder, logger_dirs(logger_k).name, 'CSC0.mat'));
     timestamps_usec = get_timestamps_for_Nlg_voltage_all_samples(length(tsData.AD_count_int16),tsData.indices_of_first_samples,tsData.timestamps_of_first_samples_usec,logger_sampling_period_usec);
     piezo_data{logger_k} = double(tsData.AD_count_int16);
     piezo_mean_values(logger_k) = mean(piezo_data{logger_k});
@@ -40,7 +40,7 @@ clear timestamps_usec
 call_offset = 0.1; % seconds
 call_offset_samples = audio_fs*call_offset;
 
-all_wav_files = dir([audio_dir '*.WAV']);
+all_wav_files = dir(fullfile(audio_dir, '*.WAV'));
 wav_file_names = {all_wav_files(:).name};
 wav_file_nums = cellfun(@(x) str2double(x(end-10:end-4)),wav_file_names);
 [~,idx] = sort(wav_file_nums);
@@ -78,7 +78,7 @@ for call_k = 1:nCall
     
     wavData = cell(1,n_wav_files);
     for wav_k = 1:n_wav_files
-        wavData{wav_k} = audioread([audio_dir all_wav_files(wav_files_idx(wav_k)).name]);
+        wavData{wav_k} = audioread(fullfile(audio_dir, all_wav_files(wav_files_idx(wav_k)).name));
     end
     wavData = vertcat(wavData{:});
     
