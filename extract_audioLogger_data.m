@@ -206,7 +206,7 @@ for Nlg_folder_i=1:length(Nlg_folders) % for each of the Nlg folders
     
     % Identify all events reported with the transceiver clock as a reference
     % and change the time to refer to the logger clock. 
-    indices_bordering_unsynchronized_intervals=[1; find(ismember(event_types_and_details,'Clocks synchronized. ')); length(event_types_and_details)]; % the events when the two clocks are synchronzied, and the first and last event
+    indices_bordering_unsynchronized_intervals=unique([1; find(ismember(event_types_and_details,'Parameter change. Clocks synchronized')); length(event_types_and_details)]); % the events when the two clocks are synchronzied, and the first and last event
     indices_events_with_transceiver_time=find(ismember(event_timestamps_source,'Transceiver (Fine)')); % find the events that were originally logged with transceiver time stamps
     estimated_clock_differences=nan(length(indices_events_with_transceiver_time),1);
     
@@ -216,9 +216,7 @@ for Nlg_folder_i=1:length(Nlg_folders) % for each of the Nlg folders
             continue
         end
  %%       % Here we're taking all reports of time differences including the
-        % first one where in fact TD=0 because clocks were just syncced,
-        % the TD at this first time point is useful for previous time
-        % stamps but not for following time stamps.
+        % first one
         logical_indices_PC_comments_in_interval=PC_comments_indices>indices_bordering_unsynchronized_intervals(unsynchronized_interval_i) & PC_comments_indices<indices_bordering_unsynchronized_intervals(unsynchronized_interval_i+1); % all the clock difference report events in the current interval (periodic system checks requested under advanced control in Deuteron)
         transceiver_times_in_interval=transceiver_times(logical_indices_PC_comments_in_interval);% Value of the transceiver clock at the report of time difference between clocks
         clock_differences_usec_in_interval= clock_differences_usec(logical_indices_PC_comments_in_interval);% Value of the time difference at the report of time difference between clocks
