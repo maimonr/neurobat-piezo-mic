@@ -2,7 +2,6 @@ function cut_call_data = get_corrected_call_times_piezo(audioDir,analyzed_audio_
 
 audio2piezo = load(fullfile(audioDir, 'audio2piezo_fit.mat')); % load correction between avisoft and NLG time data
 
-
 wav_files = dir(fullfile(audioDir, '*.wav')); % load raw audio recordings
 % sort wav files according to numbering
 wav_files_name = {wav_files.name};

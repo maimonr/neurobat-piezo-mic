@@ -1,7 +1,7 @@
 function process_piezo_audio_video_data(base_dir)
 if nargin==0
     %base_dir = 'C:\Users\phyllo\Documents\Maimon\misc\piezo_testing\audioLogger_testing\03212018\';
-    base_dir = '/Volumes/JulieBatsDrive/04302018/';
+    base_dir = '/Volumes/JulieBatsDrive/05012018/';
 end
 audio_fs = 250e3;
 piezo_fs = 50e3;

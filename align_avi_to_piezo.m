@@ -98,8 +98,9 @@ for s = 1:length(session_strings)
         elseif numel(session_string_pos) == 0
             display(['couldn''t find session ' start_end{s} ' string in event file, choose index of events to use as session ' start_end{s}]);
         end
+        session_string_pos_old =session_string_pos;
         keyboard;
-        session_string_pos = input('input index into variable event_types_and_details');
+        session_string_pos = input(sprintf('input index for %s into variable event_types_and_details, choose from %d %d %d %d %d %d', start_end{s}, session_string_pos_old));
     end
     session_start_and_end(s) = event_timestamps_usec(session_string_pos);
 end
